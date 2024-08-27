@@ -13,6 +13,7 @@ class MyUser (AbstractUser):
 
     bio = models.TextField('Биография', blank=True)
     role = models.CharField('Роль', max_length=20, choices=ROLE_CHOICES)
+    confirmation_code = models.CharField(max_length=60, blank=True)
 
 
 class Title(models.Model):
