@@ -1,20 +1,6 @@
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
-
-class User(AbstractUser):
-    """Кастомная модель пользователя."""
-
-
-pass
-
-
-class Title(models.Model):
-    """Модель произведения."""
-
-
-pass
-
 
 class Review(models.Model):
     """Модель отзыва."""
@@ -25,7 +11,7 @@ class Review(models.Model):
     )
     text = models.TextField()
     author = models.ForeignKey(
-        User,
+        'MyUser',
         on_delete=models.CASCADE,
         related_name='reviews'
     )
@@ -34,7 +20,6 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Отзыв от {self.author} на {self.title}'
-
 
 class Comment(models.Model):
     """Модель комментария к отзыву."""
@@ -45,7 +30,7 @@ class Comment(models.Model):
     )
     text = models.TextField()
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='comments'
     )
@@ -53,3 +38,21 @@ class Comment(models.Model):
 
     def __str__(self):
         return f'Коммент от {self.author} на {self.review}'
+
+class MyUser(AbstractUser):
+    """Кастомная модель пользователя."""
+    
+    ROLE_CHOICES = (
+        ('user', 'Пользователь'),
+        ('moderator', 'Модератор'),
+        ('admin', 'Админ'),
+    )
+
+    bio = models.TextField('Биография', blank=True)
+    role = models.CharField('Роль', max_length=20, choices=ROLE_CHOICES)
+
+class Title(models.Model):
+    """Модель произведений, к которым пишут отзывы."""
+
+    name = models.CharField(max_length=200)
+    year = models.IntegerField()
