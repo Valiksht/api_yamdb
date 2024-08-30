@@ -1,88 +1,71 @@
-from django.shortcuts import render
 
-# from django.contrib.auth.tokens import default_token_generator
-# from django.core.mail import send_mail
-# from django.shortcuts import get_object_or_404
-# from rest_framework import filters, status, viewsets
-# from rest_framework.decorators import action, api_view
-# from rest_framework.permissions import IsAdminUser, IsAuthenticated
-# from rest_framework.response import Response
-# from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
-# from api_yamdb import settings
+from django.core.mail import send_mail
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 
-# from .models import User
-# from .permissions import IsAdmin
-# from .serializers import (ConfirmationCodeSerializer, UserEmailSerializer,
-#                           UserSerializer)
+from .serializers import UserRegistrateSeriolizer, TokenSerializer
+from .permissions import IsAdmin
+
+User = get_user_model()
 
 
-# @api_view(['POST'])
-# def get_confirmation_code(request):
-#     serializer = UserEmailSerializer(data=request.data)
+class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
+    """Вьюсет, создающий пользователя и (или) отправляюший проверочный код."""
 
-#     serializer.is_valid(raise_exception=True)
-#     username = serializer.validated_data.get('username')
-#     email = serializer.validated_data.get('email')
-#     user, _created = User.objects.get_or_create(username=username, email=email)
-#     confirmation_code = default_token_generator.make_token(user)
+    queryset = User.objects.all()
+    serializer_class = UserRegistrateSeriolizer
+    permission_classes = (IsAdmin,)
 
-#     mail_subject = 'Код подтверждения'
-#     message = f'Ваш {mail_subject.lower()}: {confirmation_code}'
-#     sender_email = settings.DEFAULT_FROM_EMAIL
-#     recipient_email = email
-#     send_mail(
-#         mail_subject,
-#         message,
-#         sender_email,
-#         [recipient_email],
-#         fail_silently=False
-#     )
-#     return Response(serializer.data, status=status.HTTP_200_OK)
+    def create(self, request, *args, **kwargs):
+        def send_on_email(confirmation_code):
+            user.confirmation_code = confirmation_code
+            user.save()
+            send_mail(
+                subject='Код подтверждения.',
+                message=f'Код подтверждения: {user.confirmation_code}',
+                from_email='from@example.com',
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
 
-
-# @api_view(['POST'])
-# def get_jwt_token(request):
-#     serializer = ConfirmationCodeSerializer(data=request.data)
-
-#     serializer.is_valid(raise_exception=True)
-#     email = serializer.validated_data.get('email')
-#     confirmation_code = serializer.validated_data.get('confirmation_code')
-#     user = get_object_or_404(User, email=email)
-
-#     if default_token_generator.check_token(user, confirmation_code):
-#         token = AccessToken.for_user(user).get('jti')
-#         return Response({'token': token}, status=status.HTTP_200_OK)
-
-#     resp = {'confirmation_code': 'Неверный код подтверждения'}
-#     return Response(resp, status=status.HTTP_400_BAD_REQUEST)
+        user, created = User.objects.get_or_create(
+            email=request.data.get('email'))
+        confirmation_code = default_token_generator.make_token(user)
+        if created:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            user.save()
+            send_on_email(confirmation_code)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            send_on_email(confirmation_code)
+            return Response(
+                {'detail': 'Новый проверочный код был отправлен на почту.'},
+                status=status.HTTP_201_CREATED
+            )
 
 
-# class UserViewSet(viewsets.ModelViewSet):
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#     lookup_field = 'username'
+class GetJWTTokenView(viewsets.ModelViewSet):
+    """ Вью сет, отправляющий JWT токен."""
 
-#     permission_classes = [IsAdmin | IsAdminUser]
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ('user__username',)
+    permission_classes = (AllowAny,)
 
-#     @action(
-#         methods=['patch', 'get'],
-#         permission_classes=[IsAuthenticated],
-#         detail=False,
-#         url_path='me',
-#         url_name='me'
-#     )
-#     def me(self, request, *args, **kwargs):
-#         user = self.request.user
-#         serializer = self.get_serializer(user)
-#         if self.request.method == 'PATCH':
-#             serializer = self.get_serializer(
-#                 user,
-#                 data=request.data,
-#                 partial=True
-#             )
-#             serializer.is_valid(raise_exception=True)
-#             serializer.save()
-#         return Response(serializer.data)
+    def get_token(self, request):
+        serializer = TokenSerializer(data=request.data)
+
+        serializer.is_valid(raise_exception=True)
+        print(serializer.validated_data)
+        user = serializer.validated_data
+        # refresh = RefreshToken.for_user(user)
+        access = RefreshToken.for_user(user).access_token
+
+        return Response({
+            # 'refresh': str(refresh),
+            'token': str(access),
+        }, status=status.HTTP_200_OK)
