@@ -20,12 +20,15 @@ class Title(models.Model):
     description = models.TextField()
     genre = models.ForeignKey(
         Genre, on_delete=models.SET_NULL,
+        null=True,
         related_name='titles'
     )
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL,
+        null=True,
         related_name='titles'
     )
+
 
 class Review(models.Model):
     """Модель отзыва."""
@@ -46,6 +49,7 @@ class Review(models.Model):
     def __str__(self):
         return f'Отзыв от {self.author} на {self.title}'
 
+
 class Comment(models.Model):
     """Модель комментария к отзыву."""
     review = models.ForeignKey(
@@ -64,9 +68,9 @@ class Comment(models.Model):
     def __str__(self):
         return f'Коммент от {self.author} на {self.review}'
 
+
 class MyUser(AbstractUser):
     """Кастомная модель пользователя."""
-    
     ROLE_CHOICES = (
         ('user', 'Пользователь'),
         ('moderator', 'Модератор'),
@@ -75,10 +79,3 @@ class MyUser(AbstractUser):
 
     bio = models.TextField('Биография', blank=True)
     role = models.CharField('Роль', max_length=20, choices=ROLE_CHOICES)
-
-class Title(models.Model):
-    """Модель произведений, к которым пишут отзывы."""
-
-    name = models.CharField(max_length=200)
-    year = models.IntegerField()
-

@@ -10,11 +10,13 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
 
 class GenreViewSet(viewsets.ModelViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -22,6 +24,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=category__slug', '=genre__slug', '=name', '=year')
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
