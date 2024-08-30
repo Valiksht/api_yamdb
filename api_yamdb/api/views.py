@@ -1,10 +1,17 @@
 
-# from django.shortcuts import render
+from django.shortcuts import render
+from django.core.mail import send_mail
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 from rest_framework import viewsets
 from reviews.models import Category, Genre, Title, Review, Comment
-from .serializers import ReviewSerializer, CommentSerializer
-from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+# from rest_framework.permissions IsAdminUser
+from .serializers import ReviewSerializer, CommentSerializer, UserSerializer
+from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
+from .permissions import IsAdmin
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -32,3 +39,10 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+class UserViewSet(viewsets.ModelViewSet):
+    """Вункция работающая с моделью пользователя."""
+
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'
+    permission_classes = [IsAdmin | IsAuthenticatedOrReadOnly]
