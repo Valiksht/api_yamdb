@@ -1,10 +1,6 @@
 
 # from django.shortcuts import render
 from rest_framework import viewsets, filters
-
-
-from reviews.models import Category, Genre, Title
-from rest_framework import viewsets
 from reviews.models import Category, Genre, Title, Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
 from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
