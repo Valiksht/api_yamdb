@@ -40,7 +40,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для произведений (Title)."""
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly | IsAdmin]
     # Укажите необходимые permission_classes здесь, если нужно
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -60,4 +60,4 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = [IsAdmin | IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly | IsAdmin]

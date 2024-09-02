@@ -21,8 +21,11 @@ class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
     serializer_class = UserRegistrateSeriolizer
     permission_classes = (IsAdmin,)
 
+    def get_permissions(self):
+        return super().get_permissions()
+
     def create(self, request, *args, **kwargs):
-        def send_on_email(confirmation_code):
+        def send_on_email(user, confirmation_code):
             user.confirmation_code = confirmation_code
             user.save()
             send_mail(
@@ -32,22 +35,25 @@ class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
                 recipient_list=[user.email],
                 fail_silently=True,
             )
-
-        user, created = User.objects.get_or_create(
-            email=request.data.get('email'))
-        confirmation_code = default_token_generator.make_token(user)
-        if created:
+        # email=request.data.get('email')
+        username=request.data.get('username')
+        # user, created = User.objects.get_or_create(username=username)
+        user = User.objects.filter(username=username).first()
+        # confirmation_code = default_token_generator.make_token(user)
+        if user == None:
+        # if created:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
-            user.save()
-            send_on_email(confirmation_code)
+            confirmation_code = default_token_generator.make_token(user)
+            send_on_email(user, confirmation_code)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            send_on_email(confirmation_code)
+            confirmation_code = default_token_generator.make_token(user)
+            send_on_email(user, confirmation_code)
             return Response(
                 {'detail': 'Новый проверочный код был отправлен на почту.'},
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_200_OK
             )
 
 
