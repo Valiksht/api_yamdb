@@ -55,15 +55,19 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'title', 'text', 'author', 'score', 'pub_date']
-        read_only_fields = ['pub_date', 'author']
+        read_only_fields = ['pub_date', 'author', 'title']
 
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для модели комментария (Comment)."""
+    author = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = ['id', 'review', 'text', 'author', 'pub_date']
-        read_only_fields = ['pub_date', 'author']
+        read_only_fields = ['pub_date', 'author', 'review']
+
+    def get_author(self, obj):
+        return obj.author.username
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя (User)."""
@@ -73,3 +77,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'username', 'email', 'first_name', 'last_name', 'bio', 'role'
         )
+
+    def update(self, instance, validated_data):
+
+        validated_data.pop('role', None)
+        return super().update(instance, validated_data)
