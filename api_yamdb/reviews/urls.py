@@ -10,7 +10,7 @@ urlpatterns = [
     path(
         'signup/',
         CreateOrGetTokenUserViewSet.as_view({'post': 'create', }),
-        name='registrate'
+        name='signup'
     ),
     path(
         'token/',
