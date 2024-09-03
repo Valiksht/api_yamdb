@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from reviews.models import Category, Genre, Title, Review, Comment
 from django.contrib.auth import get_user_model
+from rest_framework.validators import UniqueTogetherValidator
 
 import datetime as dt
 
@@ -22,6 +23,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели произведения (Title)."""
+    rating = serializers.SerializerMethodField()
 
     genre = serializers.SlugRelatedField(
         many=True,
@@ -48,14 +50,51 @@ class TitleSerializer(serializers.ModelSerializer):
                 '(год выпуска не может быть больше текущего).'
             )
         return True
+    
+    def get_rating(self, obj):
+        review = obj.reviews.all()
+        if review.exists():
+            sr_reting = 0
+            for score in review:
+                sr_reting =+ score.score
+            reting = sr_reting / review.count()
+            return reting
+        return 0
 
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва (Review)."""
+    # author = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    # title = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CreateOnlyDefault(context.get('view').kwargs['title_id']))
+    author = serializers.SerializerMethodField()
+    score = serializers.IntegerField()
 
     class Meta:
         model = Review
         fields = ['id', 'title', 'text', 'author', 'score', 'pub_date']
         read_only_fields = ['pub_date', 'author', 'title']
+
+    def validate(self, data):
+        author = self.context.get('request').user
+        title = self.context.get('view').kwargs['title_id']
+        method = self.context.get('request').method
+        if (Review.objects.filter(author=author, title=title).exists()
+                and method == 'POST'
+        ):
+            raise serializers.ValidationError(
+                'Вы уже сотавляли отзывк этому произведению!'
+            )
+        return data
+    
+    def validate_score(self, data):
+        if 1 > data or data > 10:
+            raise serializers.ValidationError(
+                'Балл должен быть в диапазоне от 1 до 10'
+            )
+        return data
+
+    def get_author(self, obj):
+        return obj.author.username
+
 
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для модели комментария (Comment)."""
@@ -78,7 +117,7 @@ class UserSerializer(serializers.ModelSerializer):
             'username', 'email', 'first_name', 'last_name', 'bio', 'role'
         )
 
-    def update(self, instance, validated_data):
+    # def update(self, instance, validated_data):
 
-        validated_data.pop('role', None)
-        return super().update(instance, validated_data)
+    #     validated_data.pop('role', None)
+    #     return super().update(instance, validated_data)

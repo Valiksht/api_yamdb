@@ -51,6 +51,14 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Отзыв от {self.author} на {self.title}'
+    
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('title', 'author'),
+                name='Можно оставить только один отзыв',
+            ),
+        )
 
 
 class Comment(models.Model):

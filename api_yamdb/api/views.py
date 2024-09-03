@@ -46,11 +46,16 @@ class TitleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly | IsAdmin]
     # Укажите необходимые permission_classes здесь, если нужно
 
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response({"detail": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return super().update(request, *args, **kwargs)
+
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthor | IsAdmin | IsModerator]
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -58,7 +63,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         title = self.get_title()
-        new_queryset = title.review.all()
+        new_queryset = Review.objects.filter(title=title)
+        # new_queryset = title.review.all()
         return new_queryset
     
     def perform_create(self, serializer):
@@ -67,11 +73,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
             author=self.request.user, title=title
         )
 
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response({"detail": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return super().update(request, *args, **kwargs)
+
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthor]
+    permission_classes = [IsAuthor | IsAdmin | IsModerator]
+
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')

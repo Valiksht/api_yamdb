@@ -18,8 +18,10 @@ class IsAuthor(permissions.BasePermission):
             return True
         elif request.method == 'POST':
             return request.user.is_authenticated
+        # elif 1==1:
         elif request.method in ('PATCH', 'DELETE'):
             return obj.author == request.user
+        
 
 
 
@@ -35,7 +37,7 @@ class IsAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        elif request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        elif request.method in ('POST', 'PATCH', 'DELETE'):
             return (
             request.user.is_authenticated and (
                 request.user.role == 'admin' or request.user.is_superuser
@@ -48,9 +50,20 @@ class IsModerator(permissions.BasePermission):
     """Проверка, является ли пользователь модератором."""
     def has_permission(self, request, view):
         return (
-            request.user.is_authenticated and
-            request.user.role == 'moderator'
+            request.user.is_authenticated 
+            and request.user.role == 'moderator'
         )
+    
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        elif request.method in ('POST', 'PATCH', 'DELETE'):
+            return (
+            request.user.is_authenticated 
+            and request.user.role == 'moderator'
+        )
+            
+        return super().has_object_permission(request, view, obj)
 
 class IsAuthenticatedOrReadOnly(permissions.BasePermission):
     """Разрешения для анонимных пользователей (только чтение) и аутентифицированных (все действия)."""
