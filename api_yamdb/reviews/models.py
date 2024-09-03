@@ -8,6 +8,10 @@ class Category(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True, max_length=50)
 
+    def __str__(self):
+        """Функция строкового представления."""
+        return self.name
+
 
 class Genre(models.Model):
     name = models.CharField(max_length=256)
@@ -30,6 +34,10 @@ class Title(models.Model):
         related_name='titles',
         null=True
     )
+
+    def __str__(self):
+        """Функция строкового представления."""
+        return self.name
 
 
 class Review(models.Model):

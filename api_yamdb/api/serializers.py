@@ -6,19 +6,31 @@ import datetime as dt
 
 User = get_user_model()
 
+
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для модели категории (Category)."""
 
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = ['name', 'slug']
+
 
 class GenreSerializer(serializers.ModelSerializer):
     """Сериализатор для модели жанра (Genre)."""
 
     class Meta:
         model = Genre
+        fields = ['name', 'slug']
+
+
+class ReadTitleSerializer(serializers.ModelSerializer):
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
+
+    class Meta:
+        model = Title
         fields = '__all__'
+
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели произведения (Title)."""
@@ -47,7 +59,15 @@ class TitleSerializer(serializers.ModelSerializer):
                 'Нельзя добавлять произведения, которые еще не вышли'
                 '(год выпуска не может быть больше текущего).'
             )
-        return True
+        return value
+
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                'Нельзя добавлять название больше 256 символов'
+            )
+        return value
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва (Review)."""

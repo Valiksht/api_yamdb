@@ -26,23 +26,16 @@ class IsAuthor(permissions.BasePermission):
 class IsAdmin(permissions.BasePermission):
     """Проверка, является ли пользователь администратором или суперпользователем."""
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and (
-                request.user.role == 'admin' or request.user.is_superuser
-            )
-        )
-    
-    def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        elif request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
-            return (
-            request.user.is_authenticated and (
-                request.user.role == 'admin' or request.user.is_superuser
-            )
-        )
-            
-        return super().has_object_permission(request, view, obj)
+        elif request.user.is_authenticated:
+            return request.user.role == 'admin'
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_authenticated:
+            return request.user.role == 'admin'
+        else:
+            return False
 
 class IsModerator(permissions.BasePermission):
     """Проверка, является ли пользователь модератором."""
