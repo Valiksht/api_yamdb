@@ -1,9 +1,40 @@
+
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
+class Category(models.Model):
+    name = models.CharField(max_length=256)
+    slug = models.SlugField(unique=True, max_length=50)
+
+
+class Genre(models.Model):
+    name = models.CharField(max_length=256)
+    slug = models.SlugField(unique=True, max_length=50)
+
+
+class Title(models.Model):
+    """Модель произведений, к которым пишут отзывы."""
+
+    name = models.CharField(max_length=256)
+    year = models.IntegerField()
+    description = models.TextField(blank=True)
+    genre = models.ManyToManyField(
+        Genre, 
+        related_name='titles',
+
+    )
+    category = models.ForeignKey(
+        Category, on_delete=models.SET_NULL,
+        related_name='titles',
+        null=True
+    )
+
+
 class Review(models.Model):
     """Модель отзыва."""
+
     title = models.ForeignKey(
         'Title',
         on_delete=models.CASCADE,
@@ -20,9 +51,19 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Отзыв от {self.author} на {self.title}'
+    
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('title', 'author'),
+                name='Можно оставить только один отзыв',
+            ),
+        )
+
 
 class Comment(models.Model):
     """Модель комментария к отзыву."""
+
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
@@ -39,9 +80,10 @@ class Comment(models.Model):
     def __str__(self):
         return f'Коммент от {self.author} на {self.review}'
 
+
 class MyUser(AbstractUser):
     """Кастомная модель пользователя."""
-    
+
     ROLE_CHOICES = (
         ('user', 'Пользователь'),
         ('moderator', 'Модератор'),
@@ -49,10 +91,6 @@ class MyUser(AbstractUser):
     )
 
     bio = models.TextField('Биография', blank=True)
-    role = models.CharField('Роль', max_length=20, choices=ROLE_CHOICES)
-
-class Title(models.Model):
-    """Модель произведений, к которым пишут отзывы."""
-
-    name = models.CharField(max_length=200)
-    year = models.IntegerField()
+    role = models.CharField('Роль', max_length=20,
+                            choices=ROLE_CHOICES, default='user')
+    confirmation_code = models.CharField(max_length=60, blank=True)
