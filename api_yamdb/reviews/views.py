@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 
 from .serializers import UserRegistrateSeriolizer, TokenSerializer
-from .permissions import IsAdmin
 
 User = get_user_model()
 
@@ -19,7 +18,7 @@ class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserRegistrateSeriolizer
-    permission_classes = (IsAdmin,)
+    permission_classes = (AllowAny,)
 
     def get_permissions(self):
         return super().get_permissions()
@@ -35,19 +34,17 @@ class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
                 recipient_list=[user.email],
                 fail_silently=True,
             )
-        # email=request.data.get('email')
-        username=request.data.get('username')
-        # user, created = User.objects.get_or_create(username=username)
+        username = request.data.get('username')
+        email = request.data.get('email')
         user = User.objects.filter(username=username).first()
-        # confirmation_code = default_token_generator.make_token(user)
-        if user == None:
-        # if created:
+        mail = User.objects.filter(email=email).first()
+        if user is None or mail is None:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
             confirmation_code = default_token_generator.make_token(user)
             send_on_email(user, confirmation_code)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             confirmation_code = default_token_generator.make_token(user)
             send_on_email(user, confirmation_code)
@@ -64,9 +61,7 @@ class GetJWTTokenView(viewsets.ModelViewSet):
 
     def get_token(self, request):
         serializer = TokenSerializer(data=request.data)
-
         serializer.is_valid(raise_exception=True)
-        print(serializer.validated_data)
         user = serializer.validated_data
         # refresh = RefreshToken.for_user(user)
         access = RefreshToken.for_user(user).access_token

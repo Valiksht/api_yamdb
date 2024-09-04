@@ -1,52 +1,54 @@
-from django.shortcuts import get_object_or_404, render
-from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+
 from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
-from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.mixins import (
-    ListModelMixin, CreateModelMixin, DestroyModelMixin, RetrieveModelMixin,
+    ListModelMixin, CreateModelMixin, DestroyModelMixin
 )
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .serializers import (
-    ReviewSerializer,
-    CommentSerializer,
-    UserSerializer,
-    CategorySerializer,
-    GenreSerializer,
-    TitleSerializer,
+    ReviewSerializer, CommentSerializer, UserSerializer,
+    CategorySerializer, GenreSerializer, TitleSerializer,
     ReadTitleSerializer
 )
-from .permissions import IsAdmin, IsModerator, IsAuthor, PutError
-
-
-# class GenrePagination(PageNumberPagination):
-#    page_size = 10  # Установите нужное количество объектов на странице
+from .permissions import IsAdmin, IsModerator, IsAuthor, ReadOnly
 
 
 User = get_user_model()
 
 
-class CategoryViewSet(CreateModelMixin, ListModelMixin, DestroyModelMixin, viewsets.GenericViewSet):
+class CategoryViewSet(
+    CreateModelMixin,
+    ListModelMixin,
+    DestroyModelMixin,
+    viewsets.GenericViewSet
+):
     """ViewSet для категорий."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin | ReadOnly]
     lookup_field = 'slug'
     filter_backends = (SearchFilter,)
     search_fields = ('=name',)
 
 
-class GenreViewSet(CreateModelMixin, ListModelMixin, DestroyModelMixin, viewsets.GenericViewSet):
+class GenreViewSet(
+    CreateModelMixin,
+    ListModelMixin,
+    DestroyModelMixin,
+    viewsets.GenericViewSet
+):
     """ViewSet для жанров."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin | ReadOnly]
     lookup_field = 'slug'
     filter_backends = (SearchFilter,)
     search_fields = ('=name',)
@@ -54,7 +56,8 @@ class GenreViewSet(CreateModelMixin, ListModelMixin, DestroyModelMixin, viewsets
 
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для произведений (Title)."""
-    permission_classes = [IsAdmin]
+
+    permission_classes = [IsAdmin | ReadOnly]
 
     def get_queryset(self):
         queryset = Title.objects.all()
@@ -91,9 +94,10 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для отзывов."""
+
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthor | IsAdmin | IsModerator]
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -101,7 +105,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         title = self.get_title()
-        new_queryset = title.reviews.all()
+        new_queryset = Review.objects.filter(title=title)
+        # new_queryset = title.review.all()
         return new_queryset
 
     def perform_create(self, serializer):
@@ -110,12 +115,21 @@ class ReviewViewSet(viewsets.ModelViewSet):
             author=self.request.user, title=title
         )
 
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {"detail": "Method not allowed."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
+
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthor]
+    permission_classes = [IsAuthor | IsAdmin | IsModerator]
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -138,23 +152,59 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
-            return Response({"detail": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response(
+                {"detail": "Method not allowed."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
         return super().update(request, *args, **kwargs)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для управления пользователями."""
+
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ['username']
-    permission_classes = [IsAdmin | IsAuthenticated]
+    permission_classes = [IsAdmin, IsAuthenticated]
 
-    @action(detail=False, methods=['patch'], url_path='me', permission_classes=[IsAuthenticated])
-    def update_me(self, request, *args, **kwargs):
-        user = request.user
-        serializer = self.get_serializer(user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def create(self, request, *args, **kwargs):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {'detail': 'Method not allowed.'},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
+    @action(
+        methods=['patch', 'get'],
+        permission_classes=[IsAuthenticated],
+        detail=False,
+        url_path='me',
+        url_name='me'
+    )
+    def me(self, request, *args, **kwargs):
+        user = self.request.user
+        serializer = self.get_serializer(user)
+        if self.request.method == 'PATCH':
+            if 'role' in request.data:
+                return Response(
+                    {"detail": "Изменение поля role запрещено."},
+                    status=400
+                )
+            serializer = self.get_serializer(
+                user,
+                data=request.data,
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response(serializer.data)

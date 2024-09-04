@@ -2,9 +2,11 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 
 
 class Category(models.Model):
+    """Модель категорий к произведениям."""
     name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True, max_length=50)
 
@@ -25,7 +27,7 @@ class Title(models.Model):
     year = models.IntegerField()
     description = models.TextField(blank=True)
     genre = models.ManyToManyField(
-        Genre, 
+        Genre,
         related_name='titles',
 
     )
@@ -60,6 +62,14 @@ class Review(models.Model):
     def __str__(self):
         return f'Отзыв от {self.author} на {self.title}'
 
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('title', 'author'),
+                name='Можно оставить только один отзыв',
+            ),
+        )
+
 
 class Comment(models.Model):
     """Модель комментария к отзыву."""
@@ -89,7 +99,28 @@ class MyUser(AbstractUser):
         ('moderator', 'Модератор'),
         ('admin', 'Админ'),
     )
-
+    username_validator = RegexValidator(
+        regex=r'^[\w.@+-]+$',
+        message='Введите допустимое имя пользователя.',
+        code='invalid_username'
+    )
+    email = models.EmailField(
+        max_length=254,
+        unique=True,
+        validators=[username_validator],
+        error_messages={
+            'unique': "Пользователь с такой почтой уже существует."
+        },
+        help_text="Введите свою почту."
+    )
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        error_messages={
+            'unique': "Пользователь с таким именем уже существует."
+        },
+        help_text="Введите уникальное имя пользователя."
+    )
     bio = models.TextField('Биография', blank=True)
     role = models.CharField('Роль', max_length=20,
                             choices=ROLE_CHOICES, default='user')
