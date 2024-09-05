@@ -162,27 +162,28 @@ class CommentViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для управления пользователями."""
 
-    queryset = User.objects.all().order_by('id')
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ['username']
     permission_classes = [IsAdmin, IsAuthenticated]
+    http_method_names = ['get', 'post', 'putch', 'delete']
 
     def create(self, request, *args, **kwargs):
         serializer = UserSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
+        if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {'detail': 'Method not allowed.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
+    # def update(self, request, *args, **kwargs):
+    #     if request.method == 'PUT':
+    #         return Response(
+    #             {'detail': 'Method not allowed.'},
+    #             status=status.HTTP_405_METHOD_NOT_ALLOWED
+    #         )
+    #     return super().update(request, *args, **kwargs)
 
     @action(
         methods=['patch', 'get'],
