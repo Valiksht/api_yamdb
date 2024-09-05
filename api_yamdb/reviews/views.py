@@ -1,4 +1,3 @@
-
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -9,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 
 from .serializers import UserRegistrateSeriolizer, TokenSerializer
+from api_yamdb.constants import BASE_EMAIL
 
 User = get_user_model()
 
@@ -30,7 +30,7 @@ class CreateOrGetTokenUserViewSet(viewsets.ModelViewSet):
             send_mail(
                 subject='Код подтверждения.',
                 message=f'Код подтверждения: {user.confirmation_code}',
-                from_email='from@example.com',
+                from_email=BASE_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=True,
             )
@@ -63,10 +63,8 @@ class GetJWTTokenView(viewsets.ModelViewSet):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data
-        # refresh = RefreshToken.for_user(user)
         access = RefreshToken.for_user(user).access_token
 
         return Response({
-            # 'refresh': str(refresh),
             'token': str(access),
         }, status=status.HTTP_200_OK)

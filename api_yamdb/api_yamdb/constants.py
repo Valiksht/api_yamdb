@@ -1,0 +1,11 @@
+USER_ROLE = 'user'
+MODERATOR_ROLE = 'moderator'
+ADMIN_ROLE = 'admin'
+
+BASE_EMAIL = 'from@example.com'
+
+NAME_LENGTH = 256
+SLUG_LENGTH = 50
+ROLE_LENGTH = 10
+USER_NAME_LENGTH = 150
+CODE_LENGTH = 60
