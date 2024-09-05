@@ -66,6 +66,5 @@ class GetJWTTokenView(viewsets.ModelViewSet):
         access = RefreshToken.for_user(user).access_token
 
         return Response({
-            # 'refresh': str(refresh),
             'token': str(access),
         }, status=status.HTTP_200_OK)

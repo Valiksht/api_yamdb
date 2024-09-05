@@ -132,7 +132,7 @@ class User(AbstractUser):
         (MODERATOR_ROLE, 'Модератор'),
         (ADMIN_ROLE, 'Админ'),
     )
-    username_validator = [simbol_validate]
+    username_validator = simbol_validate
     email = models.EmailField(
         verbose_name='Электронная почта',
         max_length=254,
