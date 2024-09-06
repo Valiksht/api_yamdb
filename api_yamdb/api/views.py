@@ -106,15 +106,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         title = self.get_title()
-        new_queryset = Review.objects.filter(title=title)
-        # new_queryset = title.review.all()
-        return new_queryset
+        return title.reviews.all()
 
     def perform_create(self, serializer):
         title = self.get_title()
         serializer.save(
             author=self.request.user, title=title
         )
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
@@ -131,6 +130,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthor | IsAdmin | IsModerator]
+
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -151,14 +152,6 @@ class CommentViewSet(viewsets.ModelViewSet):
             author=self.request.user, review=review
         )
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Method not allowed."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для управления пользователями."""
@@ -168,27 +161,19 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ['username']
-    permission_classes = [IsAdmin, IsAuthenticated]
-    http_method_names = ['get', 'post', 'putch', 'delete']
+    permission_classes = [IsAdmin]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def create(self, request, *args, **kwargs):
-        serializer = UserSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # def update(self, request, *args, **kwargs):
-    #     if request.method == 'PUT':
-    #         return Response(
-    #             {'detail': 'Method not allowed.'},
-    #             status=status.HTTP_405_METHOD_NOT_ALLOWED
-    #         )
-    #     return super().update(request, *args, **kwargs)
-
     @action(
         methods=['patch', 'get'],
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAdmin | IsAuthenticated],
         detail=False,
         url_path='me',
         url_name='me'

@@ -137,7 +137,6 @@ class User(AbstractUser):
         verbose_name='Электронная почта',
         max_length=254,
         unique=True,
-        validators=[username_validator],
         error_messages={
             'unique': "Пользователь с такой почтой уже существует."
         },
@@ -147,6 +146,7 @@ class User(AbstractUser):
         verbose_name='Ник',
         max_length=150,
         unique=True,
+        validators=[username_validator],
         error_messages={
             'unique': "Пользователь с таким именем уже существует."
         },
@@ -154,11 +154,13 @@ class User(AbstractUser):
     )
     first_name = models.CharField(
         verbose_name='Имя',
-        max_length=USER_NAME_LENGTH
+        max_length=USER_NAME_LENGTH,
+        blank=True
     )
     last_name = models.CharField(
         verbose_name='Фамилия',
-        max_length=USER_NAME_LENGTH
+        max_length=USER_NAME_LENGTH,
+        blank=True
     )
     bio = models.TextField(verbose_name='Биография', blank=True)
     role = models.CharField(verbose_name='Роль', max_length=ROLE_LENGTH,
@@ -173,14 +175,15 @@ class User(AbstractUser):
 
     @property
     def is_user(self):
-        return (self.role == USER_ROLE
-                or self.is_superuser
-                or self.is_staff)
-    
+        return self.role == USER_ROLE
+
     @property
     def is_moderator(self):
         return self.role == MODERATOR_ROLE
     
     @property
     def is_admin(self):
-        return self.role == ADMIN_ROLE
+        return (self.role == ADMIN_ROLE
+                or self.is_superuser
+                or self.is_staff)
+    
