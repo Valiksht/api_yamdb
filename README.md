@@ -3,7 +3,7 @@
 
 ## Установка и настройка
 
-### Требования
+### Использованные технологии
 
 - Python 3.9 или выше
 - Django 4.x
@@ -100,9 +100,79 @@
     - `PUT /api/v1/comments/{id}/` - Обновление комментария
     - `DELETE /api/v1/comments/{id}/` - Удаление комментария
 
+## Примеры запросов
+
+- **Получение проверочного кода:**
+
+    - `POST /api/v1/auth/signup/`:
+    {
+        "email": "2use2r@no-admin.ru",
+        "username": "as33222d"
+    }
+    - `Ответ`:
+    {
+        "username": "as33222d",
+        "email": "2use2r@no-admin.ru"
+    }
+
+- **Получение списка произведений:**
+
+    - `GET /api/v1/titles/`
+    - `Ответ`:
+    {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+            {
+                "id": 1,
+                "name": "Admin Title5",
+                "year": 2020,
+                "rating": null,
+                "description": "Test title by admin",
+                "genre": [
+                    {
+                        "name": "genre1",
+                        "slug": "admin1"
+                    },
+                    {
+                        "name": "genre2",
+                        "slug": "admin2"
+                    }
+                ],
+                "category": {
+                    "name": "categoty 1",
+                    "slug": "admin1"
+                }
+            }
+        ]
+    }
+
+- **Создание отзыва:**
+
+    - `POST /api/v1/titles/1/reviews/`:
+    {
+        "text": "User review",
+        "score": 4
+    }
+    - `Ответ`:
+    {
+        "id": 1,
+        "title": 1,
+        "text": "User review",
+        "author": "valen",
+        "score": 4,
+        "pub_date": "2024-09-08T15:47:42.206368Z"
+    }
+
 ## Тестирование
 
 Для запуска тестов используйте команду:
 
+### Авторы и исполнители проекта
+
+Рубанов Валентин: https://github.com/Valiksht
+Алина Гробова: https://github.com/gorbovaaa
+Алексей Московцев: https://github.com/alexmos2
 ```bash
 pytest

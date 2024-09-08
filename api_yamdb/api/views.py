@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
@@ -9,6 +9,9 @@ from rest_framework.decorators import action
 from rest_framework.mixins import (
     ListModelMixin, CreateModelMixin, DestroyModelMixin
 )
+from rest_framework.pagination import PageNumberPagination
+
+from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .serializers import (
@@ -17,6 +20,7 @@ from .serializers import (
     ReadTitleSerializer
 )
 from .permissions import IsAdmin, IsModerator, IsAuthor, ReadOnly
+from .filters import TitleFilter
 
 
 User = get_user_model()
@@ -57,26 +61,16 @@ class GenreViewSet(
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для произведений (Title)."""
 
+    queryset = Title.objects.all()
+    pagination_class = PageNumberPagination
+    filter_backends = (DjangoFilterBackend,)
     permission_classes = [IsAdmin | ReadOnly]
-
-    def get_queryset(self):
-        queryset = Title.objects.all()
-        category = self.request.query_params.get('category')
-        genre = self.request.query_params.get('genre')
-        name = self.request.query_params.get('name')
-        year = self.request.query_params.get('year')
-        if category is not None:
-            queryset = queryset.filter(category__slug=category)
-        if year is not None:
-            queryset = queryset.filter(year=year)
-        if genre is not None:
-            queryset = queryset.filter(genre__slug=genre)
-        if name is not None:
-            queryset = queryset.filter(name=name)
-        return queryset
+    filterset_class = TitleFilter
+    # pagination_class = PageNumberPagination
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
-        if self.request.method == 'GET':
+        if self.request.method in permissions.SAFE_METHODS:
             return ReadTitleSerializer
         return TitleSerializer
 
@@ -85,11 +79,36 @@ class TitleViewSet(viewsets.ModelViewSet):
             return (AllowAny(),)
         return super().get_permissions()
 
-    def update(self, request, *args, **kwargs):
-        if self.request.method == 'PUT':
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        else:
-            return super().update(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        data = []
+        for title in page:
+            rating = self.rating(title)
+            serialized_title = ReadTitleSerializer(title).data
+            serialized_title['rating'] = rating
+            data.append(serialized_title)
+        return self.get_paginated_response(data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        rating = self.rating(instance)
+        response_data = serializer.data
+        response_data['rating'] = rating
+
+        return Response(response_data)
+
+    def rating(self, title):
+        all_review = title.reviews.all()
+        rating = 0
+        if all_review is None:
+            return None
+        for review in all_review:
+            rating += review.score
+        if len(all_review) != 0:
+            rating /= len(all_review)
+        return rating if rating != 0 else None
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -105,15 +124,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         title = self.get_title()
-        new_queryset = Review.objects.filter(title=title)
-        # new_queryset = title.review.all()
-        return new_queryset
+        return title.reviews.all()
 
     def perform_create(self, serializer):
         title = self.get_title()
         serializer.save(
             author=self.request.user, title=title
         )
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
@@ -130,6 +148,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthor | IsAdmin | IsModerator]
+
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -150,43 +170,28 @@ class CommentViewSet(viewsets.ModelViewSet):
             author=self.request.user, review=review
         )
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Method not allowed."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
 
 class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для управления пользователями."""
 
-    queryset = User.objects.all().order_by('id')
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ['username']
-    permission_classes = [IsAdmin, IsAuthenticated]
+    permission_classes = [IsAdmin]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def create(self, request, *args, **kwargs):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {'detail': 'Method not allowed.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
     @action(
         methods=['patch', 'get'],
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAdmin | IsAuthenticated],
         detail=False,
         url_path='me',
         url_name='me'
