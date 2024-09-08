@@ -5,6 +5,11 @@ from django.shortcuts import get_object_or_404
 
 import re
 
+from api_yamdb.constants import (
+    EMAIL_LENGTH,
+    USER_NAME_LENGTH
+)
+
 User = get_user_model()
 ERROR_NAME = ['me']
 
@@ -28,8 +33,10 @@ class UserRegistrateSeriolizer(serializers.ModelSerializer):
             )
         elif not re.match(r'^[\w.@+-]+\Z', value):
             raise serializers.ValidationError('Недопустимые символы!')
-        elif len(value) >= 150:
-            raise serializers.ValidationError('Превышена максимальная длина!')
+        elif len(value) >= USER_NAME_LENGTH:
+            raise serializers.ValidationError(
+                f'Превышена максимальная длина в {USER_NAME_LENGTH} символа!'
+            )
         elif User.objects.filter(username=value).exists():
             raise serializers.ValidationError('Данный username уже занят!')
         return value
@@ -39,28 +46,21 @@ class UserRegistrateSeriolizer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Поле не может быть пустым'
             )
-        elif len(value) >= 254:
-            raise serializers.ValidationError('Превышена максимальная длина!')
+        elif len(value) >= EMAIL_LENGTH:
+            raise serializers.ValidationError(
+                f'Превышена максимальная длина в {EMAIL_LENGTH} символа!'
+            )
         elif User.objects.filter(email=value).exists():
             raise serializers.ValidationError('Данный email уже занят!')
         return value
 
     def validate(self, attrs):
-        email = attrs.get('email')
         username = attrs.get('username')
-        user_email = User.objects.filter(email=email).first()
-        user_username = User.objects.filter(username=username).first()
         if username in ERROR_NAME:
             raise serializers.ValidationError(
                 f'Username "{username}" запрещен!'
             )
-        elif user_email == user_username:
-            return attrs
-        else:
-            raise serializers.ValidationError(
-                f'Данный email: "{email}" или username "{username}" '
-                f'занят другим пользователем!'
-            )
+        return attrs
 
 
 class TokenSerializer(serializers.ModelSerializer):
