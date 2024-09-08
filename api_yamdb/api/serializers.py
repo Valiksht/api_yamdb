@@ -30,7 +30,7 @@ class GenreSerializer(serializers.ModelSerializer):
 class ReadTitleSerializer(serializers.ModelSerializer):
     """Сериализатор предоставляющий информацию о тайтлах."""
 
-    rating = serializers.SerializerMethodField()
+    rating = serializers.IntegerField(read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
 
@@ -39,18 +39,6 @@ class ReadTitleSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         ]
-        read_only_fields = ['rating']
-
-    def get_rating(self, obj):
-        all_review = Review.objects.filter(title=obj)
-        rating = 0
-        if all_review is None:
-            return None
-        for review in all_review:
-            rating += review.score
-        if len(all_review) != 0:
-            rating /= len(all_review)
-        return rating if rating != 0 else None
 
 
 class TitleSerializer(serializers.ModelSerializer):
