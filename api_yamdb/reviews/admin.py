@@ -9,6 +9,7 @@ from .models import (
     User
 )
 
+
 class CategoryAdmin(admin.ModelAdmin):
     admin.site.empty_value_display = 'Не задано'
     list_display = (
@@ -17,8 +18,8 @@ class CategoryAdmin(admin.ModelAdmin):
     )
     list_editable = (
         'slug',
-    )    
-    search_fields = ('name',) 
+    )
+    search_fields = ('name',)
     list_filter = ('name',)
     list_display_links = ('name',)
 
@@ -31,10 +32,11 @@ class GenreAdmin(admin.ModelAdmin):
     )
     list_editable = (
         'slug',
-    )    
-    search_fields = ('name',) 
+    )
+    search_fields = ('name',)
     list_filter = ('name',)
     list_display_links = ('name',)
+
 
 class TitleAdmin(admin.ModelAdmin):
     admin.site.empty_value_display = 'Не задано'
@@ -46,10 +48,11 @@ class TitleAdmin(admin.ModelAdmin):
     list_editable = (
         'year',
         'description'
-    )    
-    search_fields = ('name', 'year') 
+    )
+    search_fields = ('name', 'year')
     list_filter = ('category', 'genre')
     list_display_links = ('name',)
+
 
 class ReviewAdmin(admin.ModelAdmin):
     admin.site.empty_value_display = 'Не задано'
@@ -59,10 +62,11 @@ class ReviewAdmin(admin.ModelAdmin):
         'author',
         'score',
         'pub_date'
-    )   
-    search_fields = ('title',) 
+    )
+    search_fields = ('title',)
     list_filter = ('score',)
     list_display_links = ('title',)
+
 
 class CommentAdmin(admin.ModelAdmin):
     admin.site.empty_value_display = 'Не задано'
@@ -72,9 +76,10 @@ class CommentAdmin(admin.ModelAdmin):
         'author',
         'pub_date'
     )
-    search_fields = ('review',) 
+    search_fields = ('review',)
     list_filter = ('author',)
     list_display_links = ('review',)
+
 
 class UserAdmin(admin.ModelAdmin):
     admin.site.empty_value_display = 'Не задано'
@@ -88,11 +93,11 @@ class UserAdmin(admin.ModelAdmin):
     )
     list_editable = (
         'role',
-    )    
-    search_fields = ('username',) 
+    )
+    search_fields = ('username',)
     list_filter = ('role',)
     list_display_links = ('username',)
-    
+
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Genre, GenreAdmin)
