@@ -1,7 +1,10 @@
+import datetime as dt
+
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
 from api_yamdb.constants import (
     USER_ROLE,
@@ -79,6 +82,17 @@ class Title(models.Model):
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 
+    def clean(self) -> None:
+        self.validate_year(self.year)
+
+    def validate_year(self, value):
+        year = dt.date.today().year
+        if value > year:
+            raise ValidationError(
+                'Нельзя добавлять произведения, которые еще не вышли. '
+                '(год выпуска не может быть больше текущего).'
+            )
+
     def __str__(self):
         """Функция строкового представления."""
         return self.name
@@ -109,7 +123,7 @@ class Review(BaseReviewCommentModel):
         on_delete=models.CASCADE,
         related_name='reviews'
     )
-    score = models.IntegerField(
+    score = models.SmallIntegerField(
         validators=[MinValueValidator(1, "Оценка не может быть меньше 1")]
     )
 

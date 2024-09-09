@@ -19,7 +19,7 @@ from .serializers import (
     CategorySerializer, GenreSerializer, TitleSerializer,
     ReadTitleSerializer
 )
-from .permissions import IsAdmin, IsModerator, IsAuthor, ReadOnly
+from .permissions import AdminOnly, AdminOrReadOnly, IsAuthenticatedOrReadOnly
 from .filters import TitleFilter
 
 
@@ -36,7 +36,7 @@ class CategoryViewSet(
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAdmin | ReadOnly]
+    permission_classes = [AdminOrReadOnly]
     lookup_field = 'slug'
     filter_backends = (SearchFilter,)
     search_fields = ('=name',)
@@ -52,7 +52,7 @@ class GenreViewSet(
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [IsAdmin | ReadOnly]
+    permission_classes = [AdminOrReadOnly]
     lookup_field = 'slug'
     filter_backends = (SearchFilter,)
     search_fields = ('=name',)
@@ -64,7 +64,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
-    permission_classes = [IsAdmin | ReadOnly]
+    permission_classes = [AdminOrReadOnly]
     filterset_class = TitleFilter
     # pagination_class = PageNumberPagination
     http_method_names = ['get', 'post', 'patch', 'delete']
@@ -116,7 +116,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthor | IsAdmin | IsModerator]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         title_id = self.kwargs.get('title_id')
@@ -131,7 +132,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer.save(
             author=self.request.user, title=title
         )
-    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
@@ -147,7 +147,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthor | IsAdmin | IsModerator]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -179,7 +179,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
     filter_backends = (SearchFilter,)
     search_fields = ['username']
-    permission_classes = [IsAdmin]
+    permission_classes = [AdminOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def create(self, request, *args, **kwargs):
@@ -191,7 +191,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(
         methods=['patch', 'get'],
-        permission_classes=[IsAdmin | IsAuthenticated],
+        permission_classes=[AdminOnly | IsAuthenticated],
         detail=False,
         url_path='me',
         url_name='me'
