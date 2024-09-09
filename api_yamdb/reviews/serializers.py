@@ -1,9 +1,8 @@
-from rest_framework import serializers
+import re
 
+from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-
-import re
 
 from api_yamdb.constants import (
     EMAIL_LENGTH,
@@ -32,7 +31,9 @@ class UserRegistrateSeriolizer(serializers.ModelSerializer):
                 'Поле не может быть пустым'
             )
         elif not re.match(r'^[\w.@+-]+\Z', value):
-            raise serializers.ValidationError('Недопустимые символы!')
+            raise serializers.ValidationError(
+                'Допустимые символы: буквы, цифры, @, ., +, -.'
+            )
         elif len(value) >= USER_NAME_LENGTH:
             raise serializers.ValidationError(
                 f'Превышена максимальная длина в {USER_NAME_LENGTH} символа!'
@@ -87,4 +88,5 @@ class TokenSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Неверная связка юзернейм и проверочный код.'
             )
-        return user
+        attrs['user'] = user
+        return attrs
