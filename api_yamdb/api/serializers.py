@@ -140,7 +140,9 @@ class UserSerializer(serializers.ModelSerializer):
         valid_roles = dict(User.ROLE_CHOICES).keys()
         if value not in valid_roles:
             raise serializers.ValidationError(
-                f'Некорректная роль: {value}. Доступные роли: {", ".join(valid_roles)}.')
+                f'Некорректная роль: {value}.'
+                f'Доступные роли: {", ".join(valid_roles)}.'
+            )
         return value
 
     def validate_username(self, value):
