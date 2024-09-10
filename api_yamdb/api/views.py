@@ -1,25 +1,25 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import viewsets, status, permissions
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 from rest_framework.decorators import action
 from rest_framework.mixins import (
     ListModelMixin, CreateModelMixin, DestroyModelMixin
 )
-from rest_framework.pagination import PageNumberPagination
 
-from django_filters.rest_framework import DjangoFilterBackend
-
+from api_yamdb.constants import MEUSERNAME
 from reviews.models import Category, Genre, Title, Review, Comment
 from .serializers import (
     ReviewSerializer, CommentSerializer, UserSerializer,
     CategorySerializer, GenreSerializer, TitleSerializer,
     ReadTitleSerializer
 )
-from .permissions import AdminOnly, AdminOrReadOnly, IsAuthenticatedOrReadOnly
+from .permissions import AdminOnly, AdminOrReadOnly, AdminModeratorOrReadOnly
 from .filters import TitleFilter
 
 
@@ -62,53 +62,19 @@ class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для произведений (Title)."""
 
     queryset = Title.objects.all()
-    pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
     permission_classes = [AdminOrReadOnly]
     filterset_class = TitleFilter
-    # pagination_class = PageNumberPagination
     http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_queryset(self):
+        rating = self.queryset.annotate(rating=Avg('reviews__score'))
+        return rating
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
             return ReadTitleSerializer
         return TitleSerializer
-
-    def get_permissions(self):
-        if self.action == 'retrieve':
-            return (AllowAny(),)
-        return super().get_permissions()
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        data = []
-        for title in page:
-            rating = self.rating(title)
-            serialized_title = ReadTitleSerializer(title).data
-            serialized_title['rating'] = rating
-            data.append(serialized_title)
-        return self.get_paginated_response(data)
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        rating = self.rating(instance)
-        response_data = serializer.data
-        response_data['rating'] = rating
-
-        return Response(response_data)
-
-    def rating(self, title):
-        all_review = title.reviews.all()
-        rating = 0
-        if all_review is None:
-            return None
-        for review in all_review:
-            rating += review.score
-        if len(all_review) != 0:
-            rating /= len(all_review)
-        return rating if rating != 0 else None
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -116,7 +82,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AdminModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
@@ -133,21 +99,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
             author=self.request.user, title=title
         )
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Method not allowed."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для комментариев."""
 
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AdminModeratorOrReadOnly]
 
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -193,8 +151,8 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=['patch', 'get'],
         permission_classes=[AdminOnly | IsAuthenticated],
         detail=False,
-        url_path='me',
-        url_name='me'
+        url_path=MEUSERNAME,
+        url_name=MEUSERNAME
     )
     def me(self, request, *args, **kwargs):
         user = self.request.user
@@ -202,7 +160,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.request.method == 'PATCH':
             if 'role' in request.data:
                 return Response(
-                    {"detail": "Изменение поля role запрещено."},
+                    'Нельзя менять свою роль!'
+                    'Изменение поля role доступно только'
+                    'администраторам и модераторам',
                     status=400
                 )
             serializer = self.get_serializer(

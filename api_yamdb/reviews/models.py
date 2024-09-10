@@ -14,9 +14,10 @@ from api_yamdb.constants import (
     SLUG_LENGTH,
     ROLE_LENGTH,
     USER_NAME_LENGTH,
-    CODE_LENGTH
+    CODE_LENGTH,
+    EMAIL_LENGTH
 )
-from .validators import simbol_validate
+from .validators import simbol_validate, validate_year
 
 
 class BaseGenreCategoryModel(models.Model):
@@ -38,7 +39,7 @@ class BaseGenreCategoryModel(models.Model):
 class Category(BaseGenreCategoryModel):
     """Модель категорий к произведениям."""
 
-    class Meta:
+    class Meta(BaseGenreCategoryModel.Meta):
         ordering = ('name', 'slug')
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
@@ -51,8 +52,7 @@ class Category(BaseGenreCategoryModel):
 class Genre(BaseGenreCategoryModel):
     """Модель жанров к произведениям."""
 
-    class Meta:
-        ordering = ('name', 'slug')
+    class Meta(BaseGenreCategoryModel.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -65,7 +65,7 @@ class Title(models.Model):
     """Модель произведений, к которым пишут отзывы."""
 
     name = models.CharField(max_length=NAME_LENGTH)
-    year = models.SmallIntegerField(db_index=True)
+    year = models.SmallIntegerField(db_index=True, validators=[validate_year])
     description = models.TextField(blank=True)
     genre = models.ManyToManyField(
         Genre,
@@ -73,8 +73,10 @@ class Title(models.Model):
 
     )
     category = models.ForeignKey(
-        Category, on_delete=models.CASCADE,
-        related_name='titles'
+        Category, on_delete=models.SET_NULL,
+        related_name='titles',
+        null=True,
+        blank=True
     )
 
     class Meta:
@@ -84,14 +86,6 @@ class Title(models.Model):
 
     def clean(self) -> None:
         self.validate_year(self.year)
-
-    def validate_year(self, value):
-        year = dt.date.today().year
-        if value > year:
-            raise ValidationError(
-                'Нельзя добавлять произведения, которые еще не вышли. '
-                '(год выпуска не может быть больше текущего).'
-            )
 
     def __str__(self):
         """Функция строкового представления."""
@@ -123,11 +117,11 @@ class Review(BaseReviewCommentModel):
         on_delete=models.CASCADE,
         related_name='reviews'
     )
-    score = models.SmallIntegerField(
+    score = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1, "Оценка не может быть меньше 1")]
     )
 
-    class Meta:
+    class Meta(BaseReviewCommentModel.Meta):
         ordering = ('title', 'author')
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
@@ -151,7 +145,7 @@ class Comment(BaseReviewCommentModel):
         related_name='comments'
     )
 
-    class Meta:
+    class Meta(BaseReviewCommentModel.Meta):
         ordering = ('review', 'author')
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
@@ -169,10 +163,9 @@ class User(AbstractUser):
         (MODERATOR_ROLE, 'Модератор'),
         (ADMIN_ROLE, 'Админ'),
     )
-    username_validator = simbol_validate
     email = models.EmailField(
         verbose_name='Электронная почта',
-        max_length=254,
+        max_length=EMAIL_LENGTH,
         unique=True,
         error_messages={
             'unique': "Пользователь с такой почтой уже существует."
@@ -181,9 +174,9 @@ class User(AbstractUser):
     )
     username = models.CharField(
         verbose_name='Ник',
-        max_length=150,
+        max_length=USER_NAME_LENGTH,
         unique=True,
-        validators=[username_validator],
+        validators=[simbol_validate],
         error_messages={
             'unique': "Пользователь с таким именем уже существует."
         },
