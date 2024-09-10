@@ -35,8 +35,8 @@ class BaseGenreCategoryModel(models.Model):
 class Category(BaseGenreCategoryModel):
     """Модель категорий к произведениям."""
 
-    class Meta:
-        ordering = ('name', 'slug')
+    class Meta(BaseGenreCategoryModel.Meta):
+        # ordering = ('name', 'slug')
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -48,8 +48,8 @@ class Category(BaseGenreCategoryModel):
 class Genre(BaseGenreCategoryModel):
     """Модель жанров к произведениям."""
 
-    class Meta:
-        ordering = ('name', 'slug')
+    class Meta(BaseGenreCategoryModel.Meta):
+        # ordering = ('name', 'slug')
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
