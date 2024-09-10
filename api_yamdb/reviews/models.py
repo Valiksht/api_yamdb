@@ -37,6 +37,7 @@ class Category(BaseGenreCategoryModel):
     """Модель категорий к произведениям."""
 
     class Meta(BaseGenreCategoryModel.Meta):
+        ordering = ('name', 'slug')
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
