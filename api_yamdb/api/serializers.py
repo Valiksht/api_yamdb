@@ -4,10 +4,10 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 from reviews.models import Category, Genre, Title, Review, Comment
+from api_yamdb.constants import MEUSERNAME
+from reviews.validators import validate_year
 
 User = get_user_model()
-
-ERROR_NAME = ['me']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -53,6 +53,7 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Category.objects.all(),
         slug_field='slug'
     )
+    year = serializers.IntegerField(validators=[validate_year])
 
     class Meta:
         model = Title
@@ -60,11 +61,6 @@ class TitleSerializer(serializers.ModelSerializer):
             'id', 'name', 'year', 'description', 'genre', 'category'
         ]
         read_only_fields = ['rating']
-
-    def validate_year(self, value):
-        title = Title()
-        title.validate_year(value)
-        return value
 
     def validate_name(self, value):
         if len(value) > 256:
@@ -125,9 +121,6 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'review', 'text', 'author', 'pub_date']
         read_only_fields = ['pub_date', 'author', 'review']
 
-    # def get_author(self, obj):
-    #     return obj.author.username
-
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя (User)."""
@@ -141,6 +134,14 @@ class UserSerializer(serializers.ModelSerializer):
             'username', 'email', 'first_name',
             'last_name', 'bio', 'role'
         )
+        # read_only_fields = ['role']
+
+    def validate_role(self, value):
+        valid_roles = dict(User.ROLE_CHOICES).keys()
+        if value not in valid_roles:
+            raise serializers.ValidationError(
+                f'Некорректная роль: {value}. Доступные роли: {", ".join(valid_roles)}.')
+        return value
 
     def validate_username(self, value):
         if value is None:
@@ -171,7 +172,7 @@ class UserSerializer(serializers.ModelSerializer):
         username = attrs.get('username')
         user_email = User.objects.filter(email=email).first()
         user_username = User.objects.filter(username=username).first()
-        if username in ERROR_NAME:
+        if username is MEUSERNAME:
             raise serializers.ValidationError(
                 f'Username "{username}" запрещен!'
             )

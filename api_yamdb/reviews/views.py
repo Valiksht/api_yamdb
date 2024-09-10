@@ -62,7 +62,7 @@ class GetJWTTokenView(viewsets.ModelViewSet):
     def get_token(self, request):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data
+        user = serializer.validated_data['user']
         access = RefreshToken.for_user(user).access_token
 
         return Response({
