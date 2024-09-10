@@ -1,13 +1,16 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import (
     Category,
     Genre,
     Title,
     Review,
-    Comment,
-    User
+    Comment
 )
+
+User = get_user_model()
 
 
 class CategoryAdmin(admin.ModelAdmin):
@@ -43,6 +46,7 @@ class TitleAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'year',
+        'display_genres',
         'description'
     )
     list_editable = (
@@ -51,7 +55,10 @@ class TitleAdmin(admin.ModelAdmin):
     )
     search_fields = ('name', 'year')
     list_filter = ('category', 'genre')
-    list_display_links = ('name',)
+    list_display_links = ('display_genres',)
+
+    def display_genres(self, obj):
+        return ", ".join([str(genre) for genre in obj.genres.all()])
 
 
 class ReviewAdmin(admin.ModelAdmin):
@@ -81,7 +88,7 @@ class CommentAdmin(admin.ModelAdmin):
     list_display_links = ('review',)
 
 
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(BaseUserAdmin):
     admin.site.empty_value_display = 'Не задано'
     list_display = (
         'username',
@@ -91,12 +98,8 @@ class UserAdmin(admin.ModelAdmin):
         'bio',
         'role'
     )
-    list_editable = (
-        'role',
-    )
     search_fields = ('username',)
-    list_filter = ('role',)
-    list_display_links = ('username',)
+    ordering = ('username',)
 
 
 admin.site.register(Category, CategoryAdmin)

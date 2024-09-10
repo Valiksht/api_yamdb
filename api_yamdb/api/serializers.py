@@ -1,14 +1,13 @@
+import re
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-import re
-import datetime as dt
-
 from reviews.models import Category, Genre, Title, Review, Comment
+from api_yamdb.constants import MEUSERNAME
+from reviews.validators import validate_year
 
 User = get_user_model()
-
-ERROR_NAME = ['me']
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -39,6 +38,7 @@ class ReadTitleSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         ]
+        read_only_fields = fields
 
 
 class TitleSerializer(serializers.ModelSerializer):
@@ -53,6 +53,7 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Category.objects.all(),
         slug_field='slug'
     )
+    year = serializers.IntegerField(validators=[validate_year])
 
     class Meta:
         model = Title
@@ -60,18 +61,6 @@ class TitleSerializer(serializers.ModelSerializer):
             'id', 'name', 'year', 'description', 'genre', 'category'
         ]
         read_only_fields = ['rating']
-
-    def validate(self, data):
-        return data
-
-    def validate_year(self, value):
-        year = dt.date.today().year
-        if value > year:
-            raise serializers.ValidationError(
-                'Нельзя добавлять произведения, которые еще не вышли'
-                '(год выпуска не может быть больше текущего).'
-            )
-        return value
 
     def validate_name(self, value):
         if len(value) > 256:
@@ -84,8 +73,12 @@ class TitleSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва (Review)."""
 
-    author = serializers.SerializerMethodField()
-    score = serializers.IntegerField()
+    author = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        slug_field='username',
+        required=False,
+    )
+    score = serializers.IntegerField(min_value=1, max_value=10)
 
     class Meta:
         model = Review
@@ -96,8 +89,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         author = self.context.get('request').user
         title = self.context.get('view').kwargs['title_id']
         method = self.context.get('request').method
-        if (Review.objects.filter(author=author, title=title).exists()
-                and method == 'POST'):
+        if (method == 'POST'
+                and Review.objects.filter(
+                    author=author,
+                    title=title
+                ).exists()):
             raise serializers.ValidationError(
                 'Вы уже сотавляли отзывк этому произведению!'
             )
@@ -110,22 +106,20 @@ class ReviewSerializer(serializers.ModelSerializer):
             )
         return data
 
-    def get_author(self, obj):
-        return obj.author.username
-
 
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для модели комментария (Comment)."""
 
-    author = serializers.SerializerMethodField()
+    author = serializers.SlugRelatedField(
+        queryset=User.objects.all(),
+        slug_field='username',
+        required=False,
+    )
 
     class Meta:
         model = Comment
         fields = ['id', 'review', 'text', 'author', 'pub_date']
         read_only_fields = ['pub_date', 'author', 'review']
-
-    def get_author(self, obj):
-        return obj.author.username
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -140,6 +134,14 @@ class UserSerializer(serializers.ModelSerializer):
             'username', 'email', 'first_name',
             'last_name', 'bio', 'role'
         )
+        # read_only_fields = ['role']
+
+    def validate_role(self, value):
+        valid_roles = dict(User.ROLE_CHOICES).keys()
+        if value not in valid_roles:
+            raise serializers.ValidationError(
+                f'Некорректная роль: {value}. Доступные роли: {", ".join(valid_roles)}.')
+        return value
 
     def validate_username(self, value):
         if value is None:
@@ -170,7 +172,7 @@ class UserSerializer(serializers.ModelSerializer):
         username = attrs.get('username')
         user_email = User.objects.filter(email=email).first()
         user_username = User.objects.filter(username=username).first()
-        if username in ERROR_NAME:
+        if username is MEUSERNAME:
             raise serializers.ValidationError(
                 f'Username "{username}" запрещен!'
             )
