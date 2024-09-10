@@ -18,7 +18,7 @@ class AdminOrReadOnly(permissions.BasePermission):
         elif request.user.is_authenticated:
             return request.user.is_admin
 
-
+          
 class AdminModeratorOrReadOnly(permissions.BasePermission):
     """Является ли пользователь администратором или суперпользователем."""
 
