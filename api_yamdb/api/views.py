@@ -61,15 +61,13 @@ class GenreViewSet(
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для произведений (Title)."""
 
-    queryset = Title.objects.all()
+    queryset = Title.objects.all().annotate(
+        rating=Avg('reviews__score')
+    )
     filter_backends = (DjangoFilterBackend,)
     permission_classes = [AdminOrReadOnly]
     filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_queryset(self):
-        rating = self.queryset.annotate(rating=Avg('reviews__score'))
-        return rating
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
