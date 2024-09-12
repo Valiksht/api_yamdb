@@ -161,7 +161,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     'Нельзя менять свою роль!'
                     'Изменение поля role доступно только'
                     'администраторам и модераторам',
-                    status=400
+                    status=status.HTTP_400_BAD_REQUEST
                 )
             serializer = self.get_serializer(
                 user,
